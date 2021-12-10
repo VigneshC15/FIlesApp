@@ -1,0 +1,97 @@
+﻿@page "/"
+@using System.IO;
+@inject IJSRuntime JsRuntime
+
+<h1>File Upload!</h1>
+<div class="drag-drop-zone">
+    <InputFile OnChange="@LoadFile" />
+</div>
+<br />
+@if (fileName != null)
+{
+    <h5>@fileName</h5>
+    <pre style="color: red;">@fileTextContents</pre>
+    <pre>@((MarkupString)formatedfile)</pre>
+
+}
+@code{
+
+    const int MaxFileSize = 3 * 1024 * 1024; // 3MB
+    string fileName;
+    string fileTextContents;
+    string formatedfile;
+    IReadOnlyList<IBrowserFile> selectedFiles;
+    List<string> Eventid = new List<string>();    
+    List<string> EventDesc = new List<string>();    
+    List<DateTime> sdate = new List<DateTime>();    
+    List<DateTime> edate = new List<DateTime>();    
+
+    async Task LoadFile(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            selectedFiles = e.GetMultipleFiles();
+            if (selectedFiles != null)
+            {
+                foreach (var file in selectedFiles)
+                {
+                    if (file.Size <= MaxFileSize)
+                    {
+                        Eventid.Clear();
+                        EventDesc.Clear();
+                        sdate.Clear();
+                        edate.Clear();
+                        fileTextContents = "";
+                        formatedfile = "<table style='text-align-last: center;width: 100%;'><th><td>Event Name</td><td>Event Desc</td><td>Start DateTime</td><td>End DateTime</td></th>";
+                        var path = "C:\\TempFiles\\";
+                        var fpath = path+file.Name;
+                        fileName = file.Name;
+                        var lines = File.ReadAllLines(fpath);
+                        for (var i = 0; i < lines.Length; i += 1) {
+                            var line = lines[i];
+                            var splitted = line.Split(';');
+                            if(splitted[0].Replace("Event-Name-", "").Length==0||splitted[0].Replace("Event-Name-", "").Length>32)
+                            {
+                                fileTextContents = "Event Name Error @ line "+(i+1);
+                                break;
+                            }
+                            if(splitted[1].Replace("Event-Description-", "").Length==0||splitted[1].Replace("Event-Description-", "").Length>255)
+                            {
+                                fileTextContents = "Event Desc Error @ line "+(i+1);
+                                break;
+                            }
+                            if(splitted[2].Replace("Start-Date-Time-", "").Length==0||splitted[2].Replace("Start-Date-Time-", "").Length>255)
+                            {
+                                fileTextContents = "Start DateTime Error @ line "+(i+1);
+                                break;
+                            }
+                            if(splitted[3].Replace("End-Date-Time-", "").Length==0||splitted[3].Replace("End-Date-Time-", "").Length>255)
+                            {
+                                fileTextContents = "End DateTime Error @ line "+(i+1);
+                                break;
+                            }
+                            formatedfile += "<tr><td></td><td>"+splitted[0].Replace("Event-Name-", "")+"</td><td>"+splitted[1].Replace("Event-Description-", "")+"</td><td>"+splitted[2].Replace("Start-Date-Time-", "")+"</td><td>"+splitted[3].Replace("End-Date-Time-", "")+"</td></tr>";
+                        }
+                        formatedfile += "</table>";
+                    }
+                    else
+                    {
+                        formatedfile = "";
+                        fileTextContents= "File should be less than 3 MB! File upload failed!";
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                formatedfile = "";
+                fileTextContents= "Please select a file!";            
+            }
+            this.StateHasChanged();
+        }
+        catch (FileNotFoundException ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
